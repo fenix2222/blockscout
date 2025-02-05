@@ -53,6 +53,13 @@ services:
       file: ./services/visualizer.yml
       service: visualizer
 
+  sc-verifier:
+    extends:
+      file: ./services/smart-contract-verifier.yml
+      service: smart-contract-verifier
+    ports:
+      - 8050:8050
+
   sig-provider:
     extends:
       file: ./services/sig-provider.yml
