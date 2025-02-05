@@ -17,7 +17,7 @@ defmodule BlockScoutWeb.API.V2.AddressController do
       delete_parameters_from_next_page_params: 1,
       token_transfers_types_options: 1,
       address_transactions_sorting: 1,
-      nft_token_types_options: 1
+      nft_types_options: 1
     ]
 
   import Explorer.MicroserviceInterfaces.BENS, only: [maybe_preload_ens: 1, maybe_preload_ens_to_address: 1]
@@ -25,7 +25,7 @@ defmodule BlockScoutWeb.API.V2.AddressController do
   alias BlockScoutWeb.AccessHelper
   alias BlockScoutWeb.API.V2.{BlockView, TransactionView, WithdrawalView}
   alias Explorer.{Chain, Market}
-  alias Explorer.Chain.{Address, Transaction}
+  alias Explorer.Chain.{Address, Hash, Transaction}
   alias Explorer.Chain.Address.Counters
   alias Explorer.Chain.Token.Instance
   alias Indexer.Fetcher.{CoinBalanceOnDemand, TokenBalanceOnDemand}
@@ -48,7 +48,8 @@ defmodule BlockScoutWeb.API.V2.AddressController do
       :to_address => :optional,
       :from_address => :optional,
       :block => :optional,
-      :transaction => :optional
+      :transaction => :optional,
+      :token => :optional
     },
     api?: true
   ]
@@ -448,7 +449,7 @@ defmodule BlockScoutWeb.API.V2.AddressController do
           address_hash,
           params
           |> paging_options()
-          |> Keyword.merge(nft_token_types_options(params))
+          |> Keyword.merge(nft_types_options(params))
           |> Keyword.merge(@api_true)
           |> Keyword.merge(@nft_necessity_by_association)
         )
@@ -476,7 +477,7 @@ defmodule BlockScoutWeb.API.V2.AddressController do
           address_hash,
           params
           |> paging_options()
-          |> Keyword.merge(nft_token_types_options(params))
+          |> Keyword.merge(nft_types_options(params))
           |> Keyword.merge(@api_true)
           |> Keyword.merge(@nft_necessity_by_association)
         )
@@ -497,7 +498,16 @@ defmodule BlockScoutWeb.API.V2.AddressController do
     end
   end
 
-  defp validate_address(address_hash_string, params, options \\ @api_true) do
+  @doc """
+    Checks if this valid address hash string, and this address is not prohibited address.
+    Returns the `{:ok, address_hash, address}` if address hash passed all the checks.
+  """
+  @spec validate_address(String.t(), any(), Keyword.t()) ::
+          {:format, :error}
+          | {:not_found, {:error, :not_found}}
+          | {:restricted_access, true}
+          | {:ok, Hash.t(), Address.t()}
+  def validate_address(address_hash_string, params, options \\ @api_true) do
     with {:format, {:ok, address_hash}} <- {:format, Chain.string_to_address_hash(address_hash_string)},
          {:ok, false} <- AccessHelper.restricted_access?(address_hash_string, params),
          {:not_found, {:ok, address}} <- {:not_found, Chain.hash_to_address(address_hash, options, false)} do
